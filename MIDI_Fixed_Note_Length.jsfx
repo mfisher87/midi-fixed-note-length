@@ -39,7 +39,7 @@ our_channel = min(max(slider64 - 1, 0), 15) | 0;
 
 !mode ? (
   delay = (note_x * (60 / (tempo / ts_num)) * srate) | 0;
-):(
+) : (
   delay = (time_x * srate) | 0;
 );
 
@@ -49,26 +49,31 @@ while (
     channel = msg1 & $x0F;
     note = msg23 & $x7F;
     velocity = msg23 >> 8;
+    isNoteEvent = status == statNoteOn || status == statNoteOff;
+    isNoteOnEvent = status == statNoteOn && velocity > 0;
 
-    channel == our_channel ? (
-      status == statNoteOn && velocity > 0 ? (
-        note_active[note] == 0 ? (
-          midisend(offset, msg1, msg23);
-          message[last_msg] = offset + delay;
-          message[last_msg + 1] = note;
-          note_active[message[last_msg + 1]] = 1;
-          last_msg += 2;
-        );
-      ):(  // Not a note event, send message on
-        status != statNoteOff ? midisend(offset, msg1, msg23);
-      );
-    ):(  // Not our channel, send message on
+    channel != our_channel ? (  // Not our channel, send message on
       midisend(offset, msg1, msg23);
+    ) : !isNoteEvent ? (  // Not a note event, send message on
+      midisend(offset, msg1, msg23);
+    ) : isNoteOnEvent ? ( // Handle note-on event; NB: note-off events are swallowed!
+      note_active[note] == 0 ? (  // The pressed note is not currently active:
+        midisend(offset, msg1, msg23);  // Play the note
+
+        // Add the note to the `message` queue to be turned off after `delay` samples.
+        message[last_msg] = offset + delay;
+        message[last_msg + 1] = note;
+        note_active[note] = 1;
+        last_msg += 2;
+      );
     );
-  1;
   );
 );
 
+
+// Process `message` queue
+// NOTE: Does this happen on a separate thread simultaneously to the loop above?
+//       How do the two loops co-operate?
 i = first_msg;
 while (
   i < last_msg ? (  // Send Note Off messages for the current block
@@ -77,15 +82,15 @@ while (
       note_active[message[first_msg + 1]] = 0;
       first_msg += 2;
       i = first_msg;
-    ):(  // Decrement remaining messages by 1 block
+    ) : (  // Decrement remaining messages by 1 block
       message[i] -= samplesblock;
       i += 2;
     );
-  1;
   );
 );
 
-// Reset message queue when empty
+
+// Reset `message` queue when empty
 last_msg > 0 && first_msg == last_msg ? (
   memset(message, 0, last_msg);
   first_msg = last_msg = 0;
