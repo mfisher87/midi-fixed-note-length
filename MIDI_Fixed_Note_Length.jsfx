@@ -39,7 +39,6 @@ our_channel = min(max(slider64 - 1, 0), 15) | 0;
 
 !mode ? (
   delay = (note_x * (60 / (tempo / ts_num)) * srate) | 0;
-  delay2 = note_x  * srate * (60 / (tempo / ts_num)) | 0;
 ):(
   delay = (time_x * srate) | 0;
 );
