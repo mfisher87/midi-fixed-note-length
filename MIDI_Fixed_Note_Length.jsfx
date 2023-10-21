@@ -1,4 +1,9 @@
-desc:MIDI Fixed Note Length v0.3
+desc:MIDI Fixed Note Length v0.4
+// Original author: mwe
+//   https://forum.cockos.com/showpost.php?p=1220610&postcount=13
+//   https://web.archive.org/web/20231021155326/https://forum.cockos.com/showpost.php?p=1220610&postcount=13
+// Adapted by Matt Fisher to:
+// - support note lengthening, e.g. for modifying live MIDI drum trigger signals
 
 in_pin:none
 out_pin:none
